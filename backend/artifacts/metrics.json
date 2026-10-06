@@ -1,0 +1,155 @@
+{
+  "source": "network_dataset_labeled.csv (supervised) + network_dataset.csv (unsupervised)",
+  "label": "anomaly",
+  "features": [
+    "throughput",
+    "congestion",
+    "packet_loss",
+    "latency",
+    "jitter"
+  ],
+  "rows": 1001,
+  "anomalies": 83,
+  "anomaly_rate": 0.08291708291708291,
+  "train_rows": 800,
+  "test_rows": 201,
+  "test_anomalies": 17,
+  "models": {
+    "random_forest": {
+      "name": "Random Forest",
+      "type": "supervised",
+      "metrics": {
+        "accuracy": 0.9601990049751243,
+        "precision": 0.7368421052631579,
+        "recall": 0.8235294117647058,
+        "f1": 0.7777777777777778,
+        "roc_auc": 0.9862531969309463,
+        "pr_auc": 0.9138296344178698
+      },
+      "confusion_matrix": {
+        "tn": 179,
+        "fp": 5,
+        "fn": 3,
+        "tp": 14
+      },
+      "latency_ms": 30.420666000009078
+    },
+    "bagging": {
+      "name": "Bagging",
+      "type": "supervised",
+      "metrics": {
+        "accuracy": 0.9402985074626866,
+        "precision": 0.6,
+        "recall": 0.8823529411764706,
+        "f1": 0.7142857142857143,
+        "roc_auc": 0.982576726342711,
+        "pr_auc": 0.8865224999382271
+      },
+      "confusion_matrix": {
+        "tn": 174,
+        "fp": 10,
+        "fn": 2,
+        "tp": 15
+      },
+      "latency_ms": 14.34153400001378
+    },
+    "boosting": {
+      "name": "Boosting (Gradient)",
+      "type": "supervised",
+      "metrics": {
+        "accuracy": 0.9701492537313433,
+        "precision": 0.7619047619047619,
+        "recall": 0.9411764705882353,
+        "f1": 0.8421052631578947,
+        "roc_auc": 0.9958439897698209,
+        "pr_auc": 0.9657352941176471
+      },
+      "confusion_matrix": {
+        "tn": 179,
+        "fp": 5,
+        "fn": 1,
+        "tp": 16
+      },
+      "latency_ms": 1.5672859999904176
+    },
+    "stacking": {
+      "name": "Stacking (RF+SVM+GB)",
+      "type": "supervised",
+      "metrics": {
+        "accuracy": 0.9850746268656716,
+        "precision": 1.0,
+        "recall": 0.8235294117647058,
+        "f1": 0.9032258064516129,
+        "roc_auc": 0.9865728900255755,
+        "pr_auc": 0.9199977066850132
+      },
+      "confusion_matrix": {
+        "tn": 184,
+        "fp": 0,
+        "fn": 3,
+        "tp": 14
+      },
+      "latency_ms": 17.324656000000687
+    },
+    "svm": {
+      "name": "SVM (RBF)",
+      "type": "supervised",
+      "metrics": {
+        "accuracy": 0.9601990049751243,
+        "precision": 0.7368421052631579,
+        "recall": 0.8235294117647058,
+        "f1": 0.7777777777777778,
+        "roc_auc": 0.9849744245524297,
+        "pr_auc": 0.8667167526619356
+      },
+      "confusion_matrix": {
+        "tn": 179,
+        "fp": 5,
+        "fn": 3,
+        "tp": 14
+      },
+      "latency_ms": 1.1925039999914588
+    },
+    "isolation_forest": {
+      "name": "Isolation Forest",
+      "type": "unsupervised",
+      "score_scale": 0.07695608967838306,
+      "metrics": {
+        "accuracy": 0.9303482587064676,
+        "precision": 0.6,
+        "recall": 0.5294117647058824,
+        "f1": 0.5625,
+        "roc_auc": 0.9587595907928388,
+        "pr_auc": 0.6672748376604691
+      },
+      "confusion_matrix": {
+        "tn": 178,
+        "fp": 6,
+        "fn": 8,
+        "tp": 9
+      },
+      "latency_ms": 25.682102000009763
+    },
+    "kmeans": {
+      "name": "K-Means (distance)",
+      "type": "unsupervised",
+      "threshold": 2.393056997146055,
+      "score_scale": 0.9029773026861649,
+      "metrics": {
+        "accuracy": 0.9154228855721394,
+        "precision": 0.5,
+        "recall": 0.6470588235294118,
+        "f1": 0.5641025641025641,
+        "roc_auc": 0.9344629156010231,
+        "pr_auc": 0.5810134444677935
+      },
+      "confusion_matrix": {
+        "tn": 173,
+        "fp": 11,
+        "fn": 6,
+        "tp": 11
+      },
+      "latency_ms": 2.059659999995347
+    }
+  }
+}

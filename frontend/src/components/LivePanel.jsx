@@ -44,11 +44,9 @@ export default function LivePanel({ info, points, onRecord, onRunningChange }) {
         </label>
         <button className="btn" onClick={() => setRunning((r) => !r)}>{running ? "Stop" : "Start stream"}</button>
         <span className={`tag ${status}`}>{status}</span>
-        <span className="muted">{anomalies} anomalies in last {forModel.length}</span>
       </div>
       <div className="card">
-        <h3>Anomaly score · {modelLabel(selected)}</h3>
-        <p className="muted small">Newest on the right. Filled dots are live records; rings are records you scored manually or by batch.</p>
+        <h3>Anomaly score</h3>
         <AnomalyChart data={[...forModel].reverse()} />
       </div>
       <div className="card"><h3>Live feed</h3><LiveFeed items={live} features={info.features} /></div>

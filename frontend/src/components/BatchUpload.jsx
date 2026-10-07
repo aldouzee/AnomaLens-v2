@@ -36,7 +36,6 @@ export default function BatchUpload({ models = [], onScored }) {
   return (
     <div className="card">
       <h3>Batch upload</h3>
-      <p className="muted small">CSV with columns for each feature. Extra columns are ignored.</p>
       <ModelSelector models={models} value={model} onChange={setModel} />
       <label className="field"><span>CSV file</span>
         <input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files[0] ?? null)} />

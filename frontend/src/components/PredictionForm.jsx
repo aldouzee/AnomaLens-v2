@@ -40,7 +40,7 @@ export default function PredictionForm({ features = [], models = [], allowAll = 
       const res = await predict(model, body);
       const list = res.results ?? [res];
       setResults(list);
-      onScored?.(list.map((r) => ({ ...r, features: body, source: "manual" })));
+      onScored?.(list.map((r) => ({ ...r, features: body, source: "MANUAL" })));
     } catch (err) {
       setError(err.message); setResults(null);
     } finally {
@@ -50,7 +50,7 @@ export default function PredictionForm({ features = [], models = [], allowAll = 
 
   return (
     <form className="card" onSubmit={submit}>
-      <h3>Score a record</h3>
+      <h3>Single Upload</h3>
       <ModelSelector models={models} value={model} onChange={setModel} allowAll={allowAll} />
       <div className="inputs">
         {features.map((f) => (

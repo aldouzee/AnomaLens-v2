@@ -14,3 +14,5 @@ ml/artifacts/*
 !data/raw/.gitkeep
 !data/processed/.gitkeep
 !ml/artifacts/.gitkeep
+.vercel
+.env*

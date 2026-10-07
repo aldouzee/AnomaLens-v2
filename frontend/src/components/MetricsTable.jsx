@@ -14,7 +14,7 @@ export default function MetricsTable({ models }) {
           {models.map((m) => (
             <tr key={m.id}>
               <td><b>{modelLabel(m.id, m.name)}</b></td><td>{m.type}</td>
-              {COLS.map(([k]) => <td key={k}>{m.metrics[k].toFixed(3)}</td>)}
+              {COLS.map(([k]) => <td key={k}>{m.metrics[k].toFixed(2)}</td>)}
               <td>{m.latency_ms.toFixed(1)} ms</td>
             </tr>
           ))}

@@ -2,6 +2,7 @@ import json
 
 import joblib
 import numpy as np
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 from sklearn.cluster import KMeans
@@ -97,6 +98,34 @@ def test_batch_csv(client):
     csv = ",".join(FEATS) + "\n" + "\n".join(",".join(["0.1"] * 5) for _ in range(3))
     r = client.post("/predict/batch/csv?model=random_forest", files={"file": ("a.csv", csv, "text/csv")})
     assert r.status_code == 200 and r.json()["count"] == 3
+
+
+def test_batch_csv_fills_recent(client):
+    client.delete("/stats")
+    csv = ",".join(FEATS) + "\n" + "\n".join(",".join([str(i)] * 5) for i in range(3))
+    client.post("/predict/batch/csv?model=random_forest", files={"file": ("a.csv", csv, "text/csv")})
+    s = client.get("/stats").json()
+    assert s["total"] == 3 and len(s["recent"]) == 3
+    assert {r["source"] for r in s["recent"]} == {"batch"}
+    assert s["recent"][0]["features"]["latency"] == 2.0  # newest (last CSV row) first
+
+
+def test_explain_needs_labeled_sample(client):
+    assert client.get("/models/explain").status_code == 404
+
+
+def test_explain_feature_importance(client):
+    rng = np.random.default_rng(1)
+    X = rng.normal(size=(120, 5))
+    sample = pd.DataFrame(X, columns=FEATS).assign(label=(X[:, 0] > 1).astype(int))  # label depends on throughput only
+    sample.to_csv(settings.artifacts_dir / "stream_sample.csv", index=False)
+    r = client.get("/models/explain")
+    assert r.status_code == 200
+    body = r.json()
+    assert body["features"] == FEATS and len(body["models"]) == 5
+    rf = next(m for m in body["models"] if m["id"] == "random_forest")
+    assert max(rf["importance"], key=rf["importance"].get) == "throughput"
+    assert abs(sum(rf["importance"].values()) - 1) < 1e-3
 
 
 def test_stream(client):

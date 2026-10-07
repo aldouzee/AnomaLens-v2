@@ -2,8 +2,8 @@ import { CartesianGrid, Line, LineChart, ReferenceLine, ResponsiveContainer, Too
 
 function Dot({ cx, cy, payload }) {
   if (cx == null || cy == null) return null;
-  const color = payload.prediction === "anomaly" ? "#ff5d5d" : "#00ff6a";
-  // live records are filled dots; manual and batch records are rings
+  const color = payload.prediction === "anomaly" ? "#ff5d5d" : "#75DA9F";
+  // live records are filled dots; single and batch records are rings
   if (payload.source !== "live") return <circle cx={cx} cy={cy} r={5} fill="#0a0d0b" stroke={color} strokeWidth={2} />;
   return <circle cx={cx} cy={cy} r={payload.prediction === "anomaly" ? 5 : 2} fill={color} />;
 }
@@ -20,7 +20,7 @@ export default function AnomalyChart({ data }) {
           <ReferenceLine y={0.5} stroke="#b6f21a" strokeDasharray="4 4" />
           <Tooltip contentStyle={{ background: "#101612", border: "1px solid #2a3a2f" }}
                    formatter={(v, _name, item) => [`${Number(v).toFixed(3)} (${item.payload.source})`, "anomaly score"]} />
-          <Line type="monotone" dataKey="score" stroke="#00ff6a" strokeWidth={1.5} dot={<Dot />} isAnimationActive={false} />
+          <Line type="monotone" dataKey="score" stroke="#75DA9F" strokeWidth={1.5} dot={<Dot />} isAnimationActive={false} />
         </LineChart>
       </ResponsiveContainer>
     </div>

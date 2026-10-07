@@ -18,14 +18,18 @@ class Stats:
     def reset(self):
         self.total = 0
         self.anomalies = 0
-        self.recent: deque = deque(maxlen=20)
+        self.recent: deque = deque(maxlen=100)
 
-    def add(self, model: str, labels, scores, features=None, source: str = "manual"):
+    def add(self, model: str, labels, scores, features=None, source: str = "single"):
         self.total += len(labels)
         self.anomalies += int(np.sum(labels))
-        if features is not None:
-            self.recent.appendleft({"model": model, "source": source, "features": features,
-                                    "prediction": label_name(labels[-1]), "score": float(scores[-1])})
+        if features is None:
+            return
+        # a single record is a dict; a batch is a list of dicts, one per label/score (oldest first)
+        rows = features if isinstance(features, list) else [features]
+        for f, label, score in zip(rows, labels[-len(rows):], scores[-len(rows):]):
+            self.recent.appendleft({"model": model, "source": source, "features": f,
+                                    "prediction": label_name(label), "score": float(score)})
 
 
 stats = Stats()

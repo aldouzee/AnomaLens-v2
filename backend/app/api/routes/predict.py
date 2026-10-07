@@ -27,7 +27,7 @@ def _run_batch(model: str, records: list[dict]) -> dict:
     t0 = time.perf_counter()
     labels, scores = score_frame(model, X)
     ms = (time.perf_counter() - t0) * 1000
-    stats.add(model, labels, scores)
+    stats.add(model, labels, scores, records, source="batch")
     return {
         "model": model, "count": len(records), "anomalies": int(labels.sum()), "latency_ms": round(ms, 2),
         "rows": [{"features": r, "prediction": label_name(l), "score": round(float(s), 4)}

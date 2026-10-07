@@ -21,7 +21,8 @@ const json = (body) => ({
 });
 
 export const getModels = () => request("/models");
-export const getStats = () => request("/stats");
+export const getExplain = () => request("/models/explain");
+export const getStats =() => request("/stats");
 export const clearStats = () => request("/stats", { method: "DELETE" });
 export const predict = (model, features) => request("/predict", json({ model, features }));
 export const predictCsv = (model, file) => {

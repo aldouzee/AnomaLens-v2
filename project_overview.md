@@ -2,7 +2,7 @@
 
 A web application that evaluates network traffic records as **normal** or **anomalous** in near real time, using seven supervised and unsupervised machine learning models, served through a FastAPI backend and visualised in a React dashboard.
 
-**Status:** viable version (v0.1). The full pipeline works end to end: data → training → API → dashboard. Known limitations are listed in [section 11](#11-known-limitations).
+**Status:** v2. The full pipeline works end to end: data → training → API → dashboard, and the Docker setup builds and runs. Known limitations are listed in [section 11](#11-known-limitations).
 
 ---
 
@@ -16,7 +16,7 @@ Network operators need early warning when link quality degrades or traffic behav
 - Train and compare **unsupervised** models: Isolation Forest and K-Means (distance to nearest centroid).
 - Handle class imbalance in the training data using **SMOTE**.
 - Serve predictions through a **FastAPI** REST/WebSocket API.
-- Provide a **React** dashboard for manual input, batch upload, live stream view and model comparison.
+- Provide a **React** dashboard for single-record scoring, CSV batch upload, a live stream chart, a recent-predictions history and model comparison.
 - Package everything with **Docker / Docker Compose**.
 
 ### 1.3 Dataset
@@ -32,11 +32,11 @@ Network operators need early warning when link quality degrades or traffic behav
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18 (Vite), fetch + WebSocket, Recharts, plain CSS (`styles/app.css`) |
+| Frontend | React 18 (Vite 8, `@vitejs/plugin-react` 6), fetch + WebSocket, Recharts, plain CSS (`styles/app.css`), pages lazy-loaded |
 | Backend API | FastAPI, Uvicorn, Pydantic, python-multipart |
 | ML | scikit-learn, imbalanced-learn (SMOTE), pandas, NumPy, joblib |
 | Containerisation | Docker, Docker Compose |
-| Testing | pytest + httpx (backend, 12 tests); Vitest + React Testing Library (frontend, 3 tests) |
+| Testing | pytest + httpx (backend, 15 tests); Vitest 5 + React Testing Library (frontend, 8 tests) |
 
 ---
 
@@ -62,7 +62,7 @@ Network operators need early warning when link quality degrades or traffic behav
                                                       └─────────────────────────┘
 ```
 
-**Key idea:** training is an *offline* step that writes model artifacts to `ml/artifacts/`. The API only *loads* artifacts (once, at startup) and performs inference. Each saved model is a single scikit-learn pipeline that includes its own scaler, so the backend never rescales by hand. The only server state is an in-memory prediction history (section 5).
+**Key idea:** training is an *offline* step that writes model artifacts to `ml/artifacts/` (copied to `backend/artifacts/` for running and deployment). The API only *loads* artifacts (once, at startup) and performs inference. Each saved model is a single scikit-learn pipeline that includes its own scaler, so the backend never rescales by hand. The only server state is an in-memory prediction history (section 5).
 
 ---
 
@@ -126,9 +126,10 @@ With only 17 test anomalies, one more or fewer detected anomaly moves recall by 
 ## 4. Project Structure
 
 ```
-anomalens-v0.1/
+AnomaLens-v2/
 ├── README.md
-├── PROJECT_OVERVIEW.md
+├── project_overview.md
+├── deployment.md
 ├── docker-compose.yml
 ├── .env.example
 ├── .gitignore
@@ -149,7 +150,7 @@ anomalens-v0.1/
 │   ├── sync_backend_artifacts.py  # copy models into backend/artifacts for deployment
 │   ├── make_synthetic.py        # stand-in data generator (not needed with real data)
 │   ├── requirements.txt
-│   └── artifacts/               # *.joblib, metrics.json, stream_sample.csv
+│   └── artifacts/               # *.joblib, metrics.json, stream_sample.csv (generated, git-ignored)
 │
 ├── backend/
 │   ├── Dockerfile           # python:3.14-slim, same as training
@@ -158,7 +159,7 @@ anomalens-v0.1/
 │   ├── index.py             # Vercel entrypoint (exposes `app`, loads models)
 │   ├── vercel.json          # bundles artifacts/** into the function
 │   ├── .python-version
-│   ├── artifacts/           # copy of the trained models for deployment (see sync script)
+│   ├── artifacts/           # trained models; mounted by Docker Compose and bundled for deployment (see sync script)
 │   └── app/
 │       ├── main.py              # FastAPI app, CORS, lifespan model loading
 │       ├── core/config.py       # settings from environment variables
@@ -167,31 +168,38 @@ anomalens-v0.1/
 │       ├── services/
 │       │   ├── model_registry.py  # loads/caches artifacts
 │       │   ├── predictor.py       # inference, label mapping, in-memory stats
+│       │   ├── explain.py         # permutation feature importance on the test rows
 │       │   └── simulator.py       # replays test rows as a live feed
 │       └── tests/test_api.py
 │
 └── frontend/
-    ├── Dockerfile
+    ├── Dockerfile               # node:22-alpine, npm ci, Vite dev server
+    ├── .dockerignore            # node_modules, dist, .git
     ├── package.json
     ├── vite.config.js
     └── src/
         ├── main.jsx
-        ├── App.jsx              # shell + tabs (Dashboard, Model comparison, About)
+        ├── App.jsx              # NavBar + lazy-loaded pages (Dashboard, Model comparison, About)
         ├── modelNames.js        # persona labels per model id (display only)
+        ├── assets/logos/        # anomalens_logo.svg
         ├── api/client.js        # fetch + WebSocket helpers (auto-reconnect)
         ├── components/
+        │   ├── NavBar.jsx           # logo + tabs
+        │   ├── StatsCard.jsx        # one card with the four summary figures
         │   ├── PredictionForm.jsx   # single-record scoring, one model or all
-        │   ├── BatchUpload.jsx      # CSV scoring + result download
-        │   ├── LivePanel.jsx        # stream controls, score chart, live feed
+        │   ├── BatchUpload.jsx      # CSV scoring
+        │   ├── LivePanel.jsx        # stream controls + Packet Score chart
         │   ├── AnomalyChart.jsx     # score line chart
-        │   ├── LiveFeed.jsx
         │   ├── ModelSelector.jsx
-        │   └── MetricsTable.jsx
+        │   ├── MetricsTable.jsx
+        │   ├── FeatureImportance.jsx  # explainability chart for the Model comparison tab
+        │   ├── PredictionForm.test.jsx
+        │   └── FeatureImportance.test.jsx
         ├── pages/
         │   ├── Dashboard.jsx        # home page
         │   ├── ModelComparison.jsx
-        │   └── About.jsx
-        └── styles/app.css
+        │   └── About.jsx            # static explainer page (problem, solution, dataset, features, limits)
+        └── styles/app.css           # palette and component styles (CSS variables in :root)
 ```
 
 ---
@@ -202,11 +210,12 @@ anomalens-v0.1/
 |---|---|---|
 | GET | `/health` | Service status, loaded model ids, feature order |
 | GET | `/models` | Models with type, metrics, confusion matrix, latency; dataset summary; feature list |
+| GET | `/models/explain` | Permutation feature importance for every model (computed on first call, ~5 s, then cached) |
 | POST | `/predict` | Score one record with a model id, or `"all"` |
 | POST | `/predict/batch` | Score a JSON list of records (up to 10,000) |
 | POST | `/predict/batch/csv?model=<id>` | Score an uploaded CSV (extra columns ignored) |
 | WS | `/ws/stream?model=<id>&rate=<n>` | Push simulated, scored records (rate 0.1–20 per second) |
-| GET | `/stats` | Totals, anomaly count and rate, and the 20 most recent predictions (with source) |
+| GET | `/stats` | Totals, anomaly count and rate, and the 100 most recent predictions (with source) |
 | DELETE | `/stats` | Clear the prediction history and counters |
 
 **Example**
@@ -225,25 +234,29 @@ With `"model": "all"` the response is `{ "results": [ … one entry per model �
 
 **Behaviour notes**
 - Models and `metrics.json` are loaded once at startup from `ARTIFACTS_DIR`; **restart the backend after retraining**.
-- `/stats` is **in-memory** and resets when the backend restarts. Each recent prediction is tagged `manual` (single-record form) or `live` (stream). Batch uploads count toward the totals but are not listed individually.
+- `/stats` is **in-memory** and resets when the backend restarts. The history keeps the 100 most recent predictions, newest first, each tagged `live` (stream), `single` (single-record form) or `batch` (CSV or JSON batch; every row is listed).
 - The simulator replays held-out test rows with ±3% noise; each streamed message includes the true label as `actual`.
 
 ---
 
 ## 6. Frontend Design
 
-Three tabs; the app opens on **Dashboard**.
+Three tabs in a top **NavBar** (logo and tabs); the app opens on **Dashboard**. Pages are lazy-loaded, so the charting library is fetched only when a chart page is first opened.
 
 **Dashboard (home)**
-- Summary cards: total scored, anomalies, anomaly rate, models loaded.
-- **Live monitor (automatic):** choose a model and rate, start/stop the stream, see connection status. The **anomaly score line chart** plots live records (filled dots) together with records scored manually or by batch (rings); red = anomaly, green = normal, dashed line = 0.5 boundary. The chart shows the selected model's latest 60 points. The live feed table lists streamed records with their true label.
-- **Score records (manual):** a single-record form (any model or "All models") and CSV batch upload with a results table and CSV download.
-- **Recent predictions:** a table with a Source column (live / manual).
-- **Clear history:** below the table; clears the server history and counters and empties the chart and feed.
+- **Stats card:** one wide card with total scored, anomalies, anomaly rate and models loaded.
+- **Live Monitor:** choose a model and rate, start/stop the stream and see the connection status. The **Packet Score** line chart plots live records (filled dots) together with single and batch records (rings); red = anomaly, green = normal, dashed line = 0.5 boundary. It shows the selected model's latest 60 points. After a batch upload the chart switches to the batch's model, unless a stream is running.
+- **Manual Scoring:** a **Single Upload** form (any model or "All models") and a **Batch upload** card (CSV file). Neither shows a result of its own; scored rows go to the history table and the chart.
+- **Recent Network Predictions:** a table of the latest predictions with a Source badge. The top-right corner of the panel has a **Download CSV** button (exports the rows in the table) and a **Clear history** button (clears the server history and counters and empties the chart). Source badges read **Live / Single / Batch**, each with its own color.
 
-**Model comparison:** metrics table (precision, recall, F1, ROC-AUC, PR-AUC, accuracy, latency), a bar chart, and a form that shows every model's verdict for the same record.
+**Model comparison** ("Model Arena"): a metrics table (precision, recall, F1, ROC-AUC, PR-AUC, accuracy at 2 decimals, latency) and a grouped bar chart of precision, recall, F1 and ROC-AUC per model, drawn without animation, then a **Feature Importance** card: pick a model and see a bar chart of how much each of the five inputs drives its decisions (see 6.1).
 
-**About:** static page explaining why fixed thresholds miss anomalies and how the project works.
+**About:** a static explainer page: the problem, the solution (four-step flow, seven model personas, app features), the dataset, the five signals and how feature importance works, and honest limits. Its text lives in `About.jsx`; persona names come from `modelNames.js`, and the best F1 / recall sentence is read from the loaded metrics.
+
+### 6.1 Model explainability
+The backend measures **permutation importance** (`services/explain.py`): for each model it shuffles one feature at a time on the held-out test rows (`stream_sample.csv`, 5 repeats, seed 42) and records the drop in ROC-AUC. A bigger drop means the model relies on that feature more. The UI shows each feature's share of the total drop for the selected model. It works for all seven models, supervised and unsupervised, because it only uses the model's score. It is a global view (which inputs matter overall); it does not explain a single prediction, and it is not SHAP. The first request takes a few seconds and is then cached until the backend restarts.
+
+**Styling:** a dark theme with a lime/mint accent. Colors are CSS variables in `:root` of `styles/app.css` (`--lime`, `--live-badge`, `--single-badge`, `--batch-badge`, `--bad`, and so on).
 
 Models are shown by persona name (Torvalds, Babbage, Turing, Ritchie, Shannon, Dijkstra, Hopper) plus technique, so each is easier to remember. The labels are defined in `frontend/src/modelNames.js` and unknown model ids fall back to the name sent by the API.
 
@@ -252,19 +265,19 @@ Models are shown by persona name (Torvalds, Babbage, Turing, Ritchie, Shannon, D
 ## 7. Docker Setup
 
 `docker-compose.yml` runs two services:
-- **backend** (`python:3.14-slim`, port 8000) with `ml/artifacts` mounted **read-only** at `/app/artifacts`, so models can be retrained without rebuilding the image.
-- **frontend** (`node:20-alpine`, Vite dev server, port 5173) with `VITE_API_URL=http://localhost:8000`.
+- **backend** (`python:3.14-slim`, port 8000) with `backend/artifacts` mounted **read-only** at `/app/artifacts`. After retraining, run `python ml/sync_backend_artifacts.py` to copy the models there.
+- **frontend** (`node:22-alpine`, Vite dev server, port 5173) with `VITE_API_URL=http://localhost:8000`. The service sets `stdin_open` and `tty` because Vite exits when stdin closes. The image installs with `npm ci`, and `frontend/.dockerignore` keeps a host `node_modules` out of the build.
 
-The code is copied into the images at build time, so code changes need `docker compose up --build`; retrained models only need `docker compose restart backend`.
+The code is copied into the images at build time, so code changes need `docker compose up --build`; synced, retrained models only need `docker compose restart backend`.
 
 ---
 
 ## 8. Setup Instructions
 
-The backend finds its models in `ARTIFACTS_DIR` if set, otherwise `backend/artifacts/`, otherwise `ml/artifacts/`.
+The backend finds its models in `ARTIFACTS_DIR` if set, otherwise `backend/artifacts/`, otherwise `ml/artifacts/`. Docker Compose mounts `backend/artifacts/`.
 
 ### 8.1 Prerequisites
-Python 3.10+ (developed on 3.14), Node.js 18+ (developed on 22), Docker and Docker Compose.
+Python 3.10+ (developed on 3.14), Node.js 22.12+ (required by Vitest 5; Vite 8 needs 20.19+), Docker and Docker Compose.
 
 ### 8.2 Data
 Place `network_dataset_labeled.csv` and `network_dataset.csv` in `data/raw/`. File names, features and the label column are set in `ml/config.py`.
@@ -293,6 +306,7 @@ Frontend http://localhost:5173 · API http://localhost:8000 · API docs http://l
 cd backend && pip install -r requirements-dev.txt && uvicorn app.main:app --reload --port 8000
 cd frontend && npm install && npm run dev
 ```
+Quickest frontend loop: run only the API in Docker (`docker compose up backend`) and the frontend with `npm run dev`, which hot-reloads without rebuilding images.
 
 ### 8.6 Tests
 ```bash
@@ -311,9 +325,9 @@ VITE_API_URL=http://localhost:8000
 
 | Changed | Do this |
 |---|---|
-| `frontend/src` | Saves hot-reload with `npm run dev`; in Docker run `docker compose up --build` |
+| `frontend/src` | Saves hot-reload with `npm run dev`; in Docker run `docker compose up --build frontend` |
 | `backend/app` | Auto-reloads with `--reload`; in Docker run `docker compose up --build backend` |
-| Model code or data | Re-run the `ml/` scripts, then restart the backend |
+| Model code or data | Re-run the `ml/` scripts, run `sync_backend_artifacts.py`, then restart the backend |
 
 ### 8.9 Deploying online
 The repo is prepared for a two-project Vercel deployment (API from `backend/`, dashboard from `frontend/`); follow [deployment.md](deployment.md). Library versions in `backend/requirements.txt` are pinned to those used for training, and the Python version is `3.14`. Saved `.joblib` models only load with the same scikit-learn version, so retrain and update the pins together.
@@ -329,8 +343,8 @@ The repo is prepared for a two-project Vercel deployment (API from `backend/`, d
 | 3. Evaluation | Done (metrics, calibration and latency in `metrics.json`) |
 | 4. Backend | Done (registry, predict, batch, stats, tests) |
 | 5. Live streaming | Done (simulator + WebSocket) |
-| 6. Frontend | Done (dashboard with live and manual scoring, comparison, about) |
-| 7. Containerisation | Dockerfiles and Compose provided |
+| 6. Frontend | Done (dashboard with live, single and batch scoring, comparison, About page) |
+| 7. Containerisation | Dockerfiles and Compose provided and run end to end |
 | 7b. Online deployment | Repository prepared for Vercel (entrypoint, pinned versions, bundled models); steps in `deployment.md` |
 | 8. Polish | Input validation and error handling done; screenshots and CI still open |
 
@@ -338,21 +352,22 @@ The repo is prepared for a two-project Vercel deployment (API from `backend/`, d
 
 ## 10. Testing & Quality
 
-- **Backend (12 tests):** health, models, single and "all" prediction, supervised and unsupervised paths (incl. boosting, stacking, K-Means), unknown model, invalid features, CSV batch, WebSocket stream, clear-history, and the decision-to-label mapping.
-- **Frontend (3 tests):** the prediction form submits and shows the verdict, reports scored records to the dashboard, and shows API errors.
+- **Backend (15 tests):** health, models, single and "all" prediction, supervised and unsupervised paths (incl. boosting, stacking, K-Means), unknown model, invalid features, CSV batch (and that its rows fill the recent history), WebSocket stream, clear-history, feature importance (needs the labeled sample; picks the right feature on synthetic data), and the decision-to-label mapping.
+- **Frontend (5 tests):** the prediction form submits the entered values, reports scored records (source `single`) to the dashboard, and shows API errors; the feature-importance card shows its chart and its API error.
 - **ML:** scripts were run end to end on the real data; there are no automated ML tests yet.
 
 ## 11. Known limitations
 - **Small test set:** only 17 anomalies, so model rankings are indicative, not conclusive.
 - **Live data is simulated:** the stream replays held-out dataset rows, not real telemetry.
-- **History is not persistent:** `/stats` resets on backend restart, and the dashboard chart and feed live in the browser page and reset on reload.
-- **Docker** files were written but not exercised end to end during development; local runs were verified.
+- **History is not persistent:** `/stats` (capped at 100 recent rows) resets on backend restart, and the dashboard chart lives in the browser page and resets on reload.
+- **Scores sit near 0 or 1:** scores are model probabilities, so confident "normal" rows score about 0 and the Packet Score chart looks flat for most of them.
+- **Dev server in Docker:** the frontend container runs the Vite dev server, not a production build.
 - **SVM probabilities:** scikit-learn ≥ 1.9 deprecates `SVC(probability=True)`; it still works. The SVM verdict (from `predict`) and its score (from `predict_proba`) can disagree close to the 0.5 boundary.
 - **Stale file:** an old `ml/artifacts/lof.joblib` from the replaced LOF model may still exist; it is not loaded.
 - No authentication, and CORS is limited to the configured origin.
 
 ## 12. Possible Extensions
-- Model explainability (SHAP / feature importances shown in the UI)
+- Per-prediction explanations (SHAP); global feature importance is already in the Model comparison tab
 - Threshold tuning slider for anomaly scores
 - Persisting predictions in a database (PostgreSQL / SQLite) for history and alerts
 - Authentication and role-based access

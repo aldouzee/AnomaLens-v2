@@ -4,13 +4,15 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./ml/artifacts:/app/artifacts:ro   # trained models mounted read-only
+      - ./backend/artifacts:/app/artifacts:ro   # trained models mounted read-only
     environment:
       - ARTIFACTS_DIR=/app/artifacts
       - CORS_ORIGINS=http://localhost:5173
 
   frontend:
     build: ./frontend
+    stdin_open: true   # vite exits when stdin closes
+    tty: true
     ports:
       - "5173:5173"
     environment:

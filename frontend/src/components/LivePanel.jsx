@@ -39,7 +39,7 @@ export default function LivePanel({ info, points, model, onModelChange, onRecord
         <label className="field"><span>Rate: {rate}/s</span>
           <input type="range" min="1" max="10" value={rate} onChange={(e) => setRate(Number(e.target.value))} />
         </label>
-        <button className="btn" onClick={() => setRunning((r) => !r)}>{running ? "Stop" : "Start stream"}</button>
+        <button className="btn" onClick={() => setRunning((r) => !r)}>{running ? "Stop" : "Start Stream"}</button>
         <span className={`tag ${status}`}>{status}</span>
       </div>
       <div className="card">

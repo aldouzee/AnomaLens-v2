@@ -76,7 +76,7 @@ export default function Dashboard({ info }) {
           <h3>Recent Network Predictions</h3>
           <div className="card-actions">
             <button className="btn sm" disabled={!stats?.recent?.length} onClick={download}>Download CSV</button>
-            <button className="btn sm danger" disabled={!stats?.total && !points.length} onClick={clear}>Clear history</button>
+            <button className="btn sm danger" disabled={!stats?.total && !points.length} onClick={clear}>Clear History</button>
           </div>
         </div>
         {clearError && <p className="err">{clearError}</p>}

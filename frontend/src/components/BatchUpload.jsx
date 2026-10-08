@@ -20,12 +20,12 @@ export default function BatchUpload({ models = [], onScored }) {
 
   return (
     <div className="card">
-      <h3>Batch upload</h3>
+      <h3>Batch Upload</h3>
       <ModelSelector models={models} value={model} onChange={setModel} />
       <label className="field"><span>CSV file</span>
         <input type="file" accept=".csv,text/csv" onChange={(e) => setFile(e.target.files[0] ?? null)} />
       </label>
-      <button className="btn" disabled={!file || busy} onClick={run}>{busy ? "Scoring…" : "Score file"}</button>
+      <button className="btn" disabled={!file || busy} onClick={run}>{busy ? "Scoring…" : "Score File"}</button>
       {error && <p className="err">{error}</p>}
     </div>
   );
